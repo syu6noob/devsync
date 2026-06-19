@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Go
         uses: actions/setup-go@v6
@@ -65,7 +65,7 @@ jobs:
             ext: ""
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Go
         uses: actions/setup-go@v6
@@ -88,10 +88,16 @@ jobs:
       - name: Archive
         run: |
           cd dist
-          tar -czf devsync-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz devsync-${{ matrix.goos }}-${{ matrix.goarch }}
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            zip -r devsync-${{ matrix.goos }}-${{ matrix.goarch }}.zip devsync-${{ matrix.goos }}-${{ matrix.goarch }}
+          else
+            tar -czf devsync-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz devsync-${{ matrix.goos }}-${{ matrix.goarch }}
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: devsync-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: dist/devsync-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
+          path: |
+            dist/devsync-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
+            dist/devsync-${{ matrix.goos }}-${{ matrix.goarch }}.zip

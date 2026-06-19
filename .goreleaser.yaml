@@ -1,0 +1,115 @@
+version: 2
+
+project_name: devsync
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: devsync
+    main: ./cmd/devsync
+    binary: devsync
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/syu6noob/devsync/internal/core.Version={{ .Version }}
+      - -X github.com/syu6noob/devsync/internal/core.Commit={{ .Commit }}
+      - -X github.com/syu6noob/devsync/internal/core.Date={{ .Date }}
+
+  - id: devsync-server
+    main: ./cmd/devsync-server
+    binary: devsync-server
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/syu6noob/devsync/internal/core.Version={{ .Version }}
+      - -X github.com/syu6noob/devsync/internal/core.Commit={{ .Commit }}
+      - -X github.com/syu6noob/devsync/internal/core.Date={{ .Date }}
+
+archives:
+  - id: devsync-client
+    ids:
+      - devsync
+    name_template: >-
+      devsync-client_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - README.md
+      - examples/.devsyncignore
+
+  - id: devsync-server
+    ids:
+      - devsync-server
+    name_template: >-
+      devsync-server_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    formats:
+      - tar.gz
+    files:
+      - README.md
+      - packaging/devsync-server.service
+      - packaging/devsync-server.env
+
+nfpms:
+  - id: devsync-server
+    ids:
+      - devsync-server
+    package_name: devsync-server
+    file_name_template: >-
+      {{ .PackageName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    vendor: syu6noob
+    homepage: https://github.com/syu6noob/devsync
+    maintainer: syu6noob <kusakusahebi@gmail.com>
+    description: Development file sync server for DevSync.
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
+    contents:
+      - src: packaging/devsync-server.service
+        dst: /etc/systemd/system/devsync-server.service
+      - src: packaging/devsync-server.env
+        dst: /etc/devsync-server/devsync-server.env
+        type: "config|noreplace"
+      - dst: /var/lib/devsync
+        type: dir
+      - dst: /etc/devsync-server
+        type: dir
+    scripts:
+      postinstall: packaging/postinstall.sh
+      preremove: packaging/preremove.sh
+      postremove: packaging/postremove.sh
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: '{{ incpatch .Version }}-next'
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'

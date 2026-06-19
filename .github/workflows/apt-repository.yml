@@ -1,0 +1,94 @@
+name: APT Repository
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-apt-repository:
+    name: Build APT repository from release packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install repository tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev gzip
+
+      - name: Download deb packages from GitHub Releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p public/apt/pool/main
+          tags=$(gh release list --repo "$REPO" --limit 100 --json tagName --jq '.[].tagName')
+          for tag in $tags; do
+            gh release download "$tag" --repo "$REPO" --pattern 'devsync-server_*_linux_amd64.deb' --dir public/apt/pool/main --clobber || true
+            gh release download "$tag" --repo "$REPO" --pattern 'devsync-server_*_linux_arm64.deb' --dir public/apt/pool/main --clobber || true
+          done
+          test -n "$(find public/apt/pool/main -name '*.deb' -print -quit)"
+
+      - name: Generate APT metadata
+        run: |
+          set -euo pipefail
+          cd public/apt
+          for arch in amd64 arm64; do
+            mkdir -p "dists/stable/main/binary-${arch}"
+            dpkg-scanpackages --arch "${arch}" pool/main /dev/null | gzip -9c > "dists/stable/main/binary-${arch}/Packages.gz"
+          done
+          {
+            echo "Origin: DevSync"
+            echo "Label: DevSync"
+            echo "Suite: stable"
+            echo "Codename: stable"
+            echo "Architectures: amd64 arm64"
+            echo "Components: main"
+            echo "Description: DevSync APT repository"
+          } > dists/stable/Release
+
+      - name: Add repository index page
+        run: |
+          {
+            echo '<!doctype html>'
+            echo '<html lang="en">'
+            echo '<head><meta charset="utf-8"><title>DevSync packages</title></head>'
+            echo '<body>'
+            echo '  <h1>DevSync packages</h1>'
+            echo '  <p>APT repository path: <code>/apt</code></p>'
+            echo '  <pre>echo "deb [trusted=yes] https://syu6noob.github.io/devsync/apt stable main" | sudo tee /etc/apt/sources.list.d/devsync.list'
+            echo 'sudo apt update'
+            echo 'sudo apt install devsync-server</pre>'
+            echo '</body>'
+            echo '</html>'
+          } > public/index.html
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: public
+
+  deploy:
+    name: Deploy APT repository to GitHub Pages
+    needs: build-apt-repository
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

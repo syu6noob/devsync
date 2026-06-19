@@ -1,0 +1,46 @@
+name: Build Windows Client
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows-client:
+    name: Build devsync.exe for Windows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build Windows amd64 client
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: "0"
+          VERSION: dev
+          COMMIT: ${{ github.sha }}
+        run: |
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          MODULE="github.com/syu6noob/devsync"
+          LDFLAGS="-s -w -X ${MODULE}/internal/core.Version=${VERSION} -X ${MODULE}/internal/core.Commit=${COMMIT} -X ${MODULE}/internal/core.Date=${DATE}"
+          mkdir -p dist
+          go build -trimpath -ldflags "$LDFLAGS" -o dist/devsync.exe ./cmd/devsync
+
+      - name: Upload Windows exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: devsync-windows-amd64-exe
+          path: dist/devsync.exe

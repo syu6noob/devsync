@@ -14,9 +14,13 @@ It synchronizes files between Windows clients and a Linux server, with Git-like 
 - `status`, `push`, `pull`, `sync`
 - Conflict detection
 - Conflict copy generation
-- Linux server
+- Windows client binary
+- Linux server binary
 - Docker server runtime
 - GitHub Actions cross-builds
+- GoReleaser releases
+- `.deb` / `.rpm` packages for the Linux server
+- Optional APT repository generated with GitHub Pages
 
 ## Repository
 
@@ -38,6 +42,20 @@ or:
 
 ```bash
 make build
+```
+
+## Build Windows client locally
+
+From Linux/macOS/WSL:
+
+```bash
+make build-windows
+```
+
+or directly:
+
+```bash
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -o devsync.exe ./cmd/devsync
 ```
 
 ## Run the server locally
@@ -120,11 +138,17 @@ build/
 This repository includes:
 
 - CI workflow
-- cross-platform build workflow artifacts
-- tag-based release workflow
+- Windows client build workflow
+- tag-based GoReleaser release workflow
 - Docker image build workflow
+- APT repository deployment workflow
 
-Create a release:
+### Build `devsync.exe` from GitHub Actions
+
+Open the `Build Windows Client` workflow and run it manually, or push to `main`.
+The artifact is uploaded as `devsync-windows-amd64-exe`.
+
+### Create a release
 
 ```bash
 git tag v0.1.0
@@ -133,9 +157,27 @@ git push origin v0.1.0
 
 The release workflow builds:
 
-- Linux amd64 / arm64
-- Windows amd64 / arm64
-- macOS amd64 / arm64
+- `devsync.exe` for Windows amd64 / arm64
+- `devsync` for Linux amd64 / arm64
+- `devsync` for macOS amd64 / arm64
+- `devsync-server` for Linux amd64 / arm64
+- `devsync-server` `.deb` packages
+- `devsync-server` `.rpm` packages
+- checksums
+
+## Install Linux server from packages
+
+See [docs/INSTALL.md](docs/INSTALL.md).
+
+For Ubuntu/Debian, after GitHub Pages is enabled and the APT workflow has deployed:
+
+```bash
+echo "deb [trusted=yes] https://syu6noob.github.io/devsync/apt stable main" | sudo tee /etc/apt/sources.list.d/devsync.list
+sudo apt update
+sudo apt install devsync-server
+```
+
+The generated APT repository is unsigned for simplicity. Use it for private/testing usage first, or add GPG signing before public production use.
 
 ## Smoke test
 
@@ -148,6 +190,7 @@ scripts/smoke-test.sh
 - Use HTTPS in production, for example by putting the server behind Caddy or Nginx.
 - Change `DEVSYNC_TOKEN` before exposing the server.
 - Do not commit `.devsync/config.json` if it contains a real token.
+- Sign APT repository metadata before treating the package repository as production-ready.
 
 ## License
 

@@ -1,0 +1,20 @@
+[Unit]
+Description=DevSync Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/devsync-server/devsync-server.env
+ExecStart=/usr/bin/devsync-server -addr ${DEVSYNC_ADDR} -data ${DEVSYNC_DATA_DIR} -token ${DEVSYNC_TOKEN}
+Restart=on-failure
+RestartSec=5s
+User=devsync
+Group=devsync
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/lib/devsync
+
+[Install]
+WantedBy=multi-user.target
