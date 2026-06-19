@@ -1,0 +1,20 @@
+services:
+  devsync-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: devsync-server:local
+    container_name: devsync-server
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      DEVSYNC_ADDR: ":8080"
+      DEVSYNC_DATA_DIR: "/data"
+      # Change this before exposing the server.
+      DEVSYNC_TOKEN: "change-me"
+    volumes:
+      - devsync-data:/data
+
+volumes:
+  devsync-data:

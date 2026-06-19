@@ -1,0 +1,27 @@
+# Node.js
+node_modules/
+dist/
+build/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Go
+bin/
+*.exe
+
+# Git
+.git/
+
+# Environment files
+.env
+.env.*
+
+# Logs
+*.log
+logs/
+
+# Re-include example
+!important.log

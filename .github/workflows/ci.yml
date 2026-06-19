@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Format check
+        run: test -z "$(gofmt -l .)"
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build binaries
+        run: |
+          go build -trimpath -o dist/devsync ./cmd/devsync
+          go build -trimpath -o dist/devsync-server ./cmd/devsync-server
+
+      - name: Docker build server image
+        run: docker build -t devsync-server:ci .
+
+  cross-build:
+    name: Cross build ${{ matrix.goos }}-${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            ext: ""
+          - goos: linux
+            goarch: arm64
+            ext: ""
+          - goos: windows
+            goarch: amd64
+            ext: ".exe"
+          - goos: windows
+            goarch: arm64
+            ext: ".exe"
+          - goos: darwin
+            goarch: amd64
+            ext: ""
+          - goos: darwin
+            goarch: arm64
+            ext: ""
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: |
+          mkdir -p dist/devsync-${GOOS}-${GOARCH}
+          go build -trimpath -o dist/devsync-${GOOS}-${GOARCH}/devsync${{ matrix.ext }} ./cmd/devsync
+          go build -trimpath -o dist/devsync-${GOOS}-${GOARCH}/devsync-server${{ matrix.ext }} ./cmd/devsync-server
+          cp README.md dist/devsync-${GOOS}-${GOARCH}/
+          cp examples/.devsyncignore dist/devsync-${GOOS}-${GOARCH}/devsyncignore.example
+
+      - name: Archive
+        run: |
+          cd dist
+          tar -czf devsync-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz devsync-${{ matrix.goos }}-${{ matrix.goarch }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: devsync-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/devsync-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz

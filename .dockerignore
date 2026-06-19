@@ -1,0 +1,13 @@
+.git
+.github
+bin
+dist
+release
+data
+devsync-data
+*.zip
+*.tar.gz
+*.exe
+.DS_Store
+.vscode
+.idea

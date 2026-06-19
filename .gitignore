@@ -1,0 +1,32 @@
+# Build outputs
+/bin/
+/dist/
+/release/
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.txt
+
+# DevSync local state
+.devsync/
+.devsyncignore.local
+
+# Server data
+/data/
+/devsync-data/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment files
+.env
+.env.*
+!.env.example
